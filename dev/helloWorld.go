@@ -2,9 +2,11 @@ package main
 
 import (
 	"crypto/ecdh"
+	"crypto/ecdsa"
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/x509"
+
 	// "encoding/json"
 	"encoding/pem"
 	"fmt"
@@ -23,10 +25,13 @@ func main() {
 
 func pemToPubkey(){
 
-    var pemInput string = `-----BEGIN PUBLIC KEY-----
-MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAER2bB7I8w6EZM7I8jI0HH4ceWIK6Z
-ASqkUZUDsbLrhjG0B3+xEUgRSekUmZOgqKrw/f0cpU2cZ9/FT97RNv1U+g==
------END PUBLIC KEY-----`
+//     var pemInput string = `-----BEGIN PUBLIC KEY-----
+// MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAER2bB7I8w6EZM7I8jI0HH4ceWIK6Z
+// ASqkUZUDsbLrhjG0B3+xEUgRSekUmZOgqKrw/f0cpU2cZ9/FT97RNv1U+g==
+// -----END PUBLIC KEY-----`
+
+var pemInput string = "-----BEGIN PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAER2bB7I8w6EZM7I8jI0HH4ceWIK6Z"+
+"ASqkUZUDsbLrhjG0B3+xEUgRSekUmZOgqKrw/f0cpU2cZ9/FT97RNv1U+g==\n-----END PUBLIC KEY-----"
 
     fmt.Println(pemInput)
     // Parse the PEM-encoded public key
@@ -40,7 +45,10 @@ ASqkUZUDsbLrhjG0B3+xEUgRSekUmZOgqKrw/f0cpU2cZ9/FT97RNv1U+g==
         fmt.Println("Failed to parse DER encoded public key: %v", err)
     }
 
-    fmt.Printf("Public Key: %+v\n", parsedKey)
+    parsedPubKey, err := (parsedKey.(*ecdsa.PublicKey)).ECDH()
+    
+
+    fmt.Printf("Public Key: %+v\n", parsedPubKey.Bytes())
     fmt.Printf("Type: %T\n", (parsedKey))
     fmt.Printf("BA: %x\n", (parsedKey))
 
@@ -49,7 +57,6 @@ ASqkUZUDsbLrhjG0B3+xEUgRSekUmZOgqKrw/f0cpU2cZ9/FT97RNv1U+g==
 
 func dhke(){
 
-    // fmt.Println("Random = "+rand.Reader)
 
     alice, _ := ecdh.P256().GenerateKey(rand.Reader)
     bob, _ := ecdh.P256().GenerateKey(rand.Reader)
