@@ -9,7 +9,12 @@ GET http://localhost:9021/key?kv=9021 HTTP/1.1
 POST http://localhost:9021/dhke HTTP/1.1
 content-type: application/json
 
+# {
+#     "publicKey": "Diffie Hellmans\n Mayo"
+# }
+
 {
-    "publicKey": "Diffie Hellmans\n Mayo"
+    "publicKey": "-----BEGIN PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAER2bB7I8w6EZM7I8jI0HH4ceWIK6ZASqkUZUDsbLrhjG0B3+xEUgRSekUmZOgqKrw/f0cpU2cZ9/FT97RNv1U+g==\n-----END PUBLIC KEY-----"
+
 }
 

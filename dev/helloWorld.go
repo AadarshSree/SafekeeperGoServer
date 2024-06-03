@@ -23,7 +23,7 @@ func main() {
 
 // ~/project/SafekeeperGoServer/dev
 
-func pemToPubkey(){
+func pemToPubkey() *ecdh.PublicKey {
 
 //     var pemInput string = `-----BEGIN PUBLIC KEY-----
 // MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAER2bB7I8w6EZM7I8jI0HH4ceWIK6Z
@@ -51,6 +51,8 @@ var pemInput string = "-----BEGIN PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DA
     fmt.Printf("Public Key: %+v\n", parsedPubKey.Bytes())
     fmt.Printf("Type: %T\n", (parsedKey))
     fmt.Printf("BA: %x\n", (parsedKey))
+
+    return parsedPubKey
 
 
 }

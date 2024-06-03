@@ -1,7 +1,14 @@
 package main
 
 import (
+	"crypto/ecdh"
+	"crypto/ecdsa"
+	"crypto/rand"
+	"crypto/sha256"
+	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -64,7 +71,6 @@ func dhke(w http.ResponseWriter, r *http.Request){
 
 	var clientPubKey ClientPublicKey
 	decoder := json.NewDecoder(r.Body)
-	fmt.Println(r.Body )
     err := decoder.Decode(&clientPubKey)
     if err != nil {
         http.Error(w, "Invalid request body", http.StatusBadRequest)
@@ -73,11 +79,75 @@ func dhke(w http.ResponseWriter, r *http.Request){
 
     resp := ClientPublicKey{Ka: clientPubKey.Ka}
 
+    // Now let's convert PEM to *ecdh.PublicKey
+
+    clientsPublicKey, err := pemToPubkey(clientPubKey.Ka)
+
+    if(err!=nil){
+
+        fmt.Printf("[!] Error in pemToPubKey: %v", err)
+        return 
+    }
+
+    // Starting Diffie Hellman
+
+    // we create servers ECDH thing
+    serverDhke, _ := ecdh.P256().GenerateKey(rand.Reader)
+
+    // Now let's compute the Kab
+
+    sharedKey,_ := serverDhke.ECDH(clientsPublicKey)
+    sharedKeySHA256 := sha256.Sum256(sharedKey)
+    fmt.Printf("[*] Shared Key (K_AB) = %x\n", sharedKeySHA256)
+
+
 	w.Header().Set("Content-Type", "application/json")
     json.NewEncoder(w).Encode(resp)
 
 
 }
+
+//helper function to convert PEM request (txt) to ECDH Public Key
+
+func pemToPubkey(pemStr string) (*ecdh.PublicKey , error) {
+
+    // var pemInput string = "-----BEGIN PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAER2bB7I8w6EZM7I8jI0HH4ceWIK6Z"+
+    // "ASqkUZUDsbLrhjG0B3+xEUgRSekUmZOgqKrw/f0cpU2cZ9/FT97RNv1U+g==\n-----END PUBLIC KEY-----"
+
+
+        var pemInput string = pemStr // rewrite bad rn
+
+        // fmt.Println(pemInput)
+
+        // Parse the PEM-encoded public key
+        block, _ := pem.Decode([]byte(pemInput))
+
+        if block == nil || block.Type != "PUBLIC KEY" {
+            fmt.Println("Failed to decode PEM block containing public key")
+            return nil, errors.New("failed to decode PEM block containing public key")
+        }
+    
+        parsedKey, err := x509.ParsePKIXPublicKey(block.Bytes)
+        if err != nil {
+            fmt.Printf("Failed to parse DER encoded public key: %v", err)
+            return nil,err
+        }
+    
+        parsedPubKey, err := (parsedKey.(*ecdsa.PublicKey)).ECDH()
+
+        if( err != nil){
+            fmt.Printf("Failed to convert to ECDH public key: %v", err)
+            return nil,err
+        }
+    
+        // fmt.Printf("Public Key: %+v\n", parsedPubKey.Bytes())
+        // fmt.Printf("Type: %T\n", (parsedKey))
+        // fmt.Printf("BA: %x\n", (parsedKey))
+    
+        return parsedPubKey,nil
+    
+    
+    }
 
 func main() {
 
