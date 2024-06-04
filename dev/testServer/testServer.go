@@ -29,6 +29,12 @@ type ClientPublicKey struct {
 	Ka string `json:"publicKey"`
 }
 
+type ServerPublicKey struct {
+
+	Ks string `json:"publicKey"`
+    Desc string `json:"description"`
+}
+
 func routeSafe(w http.ResponseWriter, r *http.Request) {
     // Create a new response object
     response := Response{Message: "Bonjour from Safekeeper server"}
@@ -77,7 +83,7 @@ func dhke(w http.ResponseWriter, r *http.Request){
         return
     }
 
-    resp := ClientPublicKey{Ka: clientPubKey.Ka}
+    
 
     // Now let's convert PEM to *ecdh.PublicKey
 
@@ -98,8 +104,25 @@ func dhke(w http.ResponseWriter, r *http.Request){
 
     sharedKey,_ := serverDhke.ECDH(clientsPublicKey)
     sharedKeySHA256 := sha256.Sum256(sharedKey)
-    fmt.Printf("[*] Shared Key (K_AB) = %x\n", sharedKeySHA256)
+    fmt.Printf("[*] Shared Key (K_AB) = %x\n", sharedKeySHA256) // sha256 the key and use cuz?
 
+    
+    // Now take servers public key convert to pem and send it in response
+
+    // Marshal the public key to PKIX, ASN.1 DER form
+    derBytes, err := x509.MarshalPKIXPublicKey(serverDhke.PublicKey())
+    if err != nil {
+        fmt.Printf("Failed to marshal servers public key: %v", err)
+    }
+
+    // Encode the DER bytes to PEM format
+    pemBlock := &pem.Block{
+        Type:  "PUBLIC KEY",
+        Bytes: derBytes,
+    }
+    pemBytes := pem.EncodeToMemory(pemBlock)
+
+    resp := ServerPublicKey{Ks: string(pemBytes), Desc: "Servers' Public Key for DHKE"}
 
 	w.Header().Set("Content-Type", "application/json")
     json.NewEncoder(w).Encode(resp)
@@ -146,8 +169,7 @@ func pemToPubkey(pemStr string) (*ecdh.PublicKey , error) {
     
         return parsedPubKey,nil
     
-    
-    }
+}
 
 func main() {
 

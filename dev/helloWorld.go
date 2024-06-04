@@ -15,8 +15,8 @@ import (
 func main() {
     fmt.Println("Hello World 123")
 
-    // dhke()
-    pemToPubkey()
+    dhke()
+    // pemToPubkey()
 }
 
 // DIFFIE HELLMAN!
