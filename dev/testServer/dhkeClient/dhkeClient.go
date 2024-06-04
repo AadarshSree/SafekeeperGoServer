@@ -103,10 +103,6 @@ func main(){
 
 func pemToPubkey(pemStr string) (*ecdh.PublicKey , error) {
 
-    // var pemInput string = "-----BEGIN PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAER2bB7I8w6EZM7I8jI0HH4ceWIK6Z"+
-    // "ASqkUZUDsbLrhjG0B3+xEUgRSekUmZOgqKrw/f0cpU2cZ9/FT97RNv1U+g==\n-----END PUBLIC KEY-----"
-
-
         var pemInput string = pemStr // rewrite bad rn
 
         // fmt.Println(pemInput)
@@ -131,10 +127,7 @@ func pemToPubkey(pemStr string) (*ecdh.PublicKey , error) {
             fmt.Printf("Failed to convert to ECDH public key: %v", err)
             return nil,err
         }
-    
-        // fmt.Printf("Public Key: %+v\n", parsedPubKey.Bytes())
-        // fmt.Printf("Type: %T\n", (parsedKey))
-        // fmt.Printf("BA: %x\n", (parsedKey))
+
     
         return parsedPubKey,nil
     
