@@ -18,7 +18,7 @@ content-type: application/json
 
 # }
 {
-    "publicKey": "-----BEGIN PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE1wzikWmo5qpAxIccvX0KccteR24VH6DHeGSSLt3UAmMobAun0eGl+BKvUNLbR8fqhLK/PnutlPAcvoeAJLIoTw==\n-----END PUBLIC KEY-----"
+    "publicKey": "-----BEGIN PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE1wzikWmo5qpAxIccvX0KccteR24VH6DHeGSSLt3UAmMobAun0eGl+BKvUNLbR8fqhLK/PnutlPAcvoeAJLIoTw==\n-----END PUBLIC KEY-----\n"
 
 }
 
