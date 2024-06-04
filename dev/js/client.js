@@ -38,16 +38,8 @@ async function dhkeKeyGen(){
     "namedCurve": "P-256"
   }, true, ['deriveBits',"deriveKey"]);
   
-  // const keyPair = await window.crypto.subtle.generateKey(
-  //   {
-  //     name: "ECDH",
-  //     namedCurve: "P-256",
-  //   },
-  //   true,
-  //   ["deriveKey", "deriveBits"]
-  // );
   
-  console.log("Clients Public Key: ",clientKeyGen.publicKey)
+  // console.log("Clients Public Key: ",clientKeyGen.publicKey)
   console.log("------------------------------------------")
   const exported = await crypto.subtle.exportKey("spki", clientKeyGen.publicKey);
 
@@ -107,7 +99,7 @@ async function dhkeKeyGen(){
     "public": publicKey_server
   }, clientKeyGen.privateKey, 256);
 
-  console.log("SHARED KEY: ",sharedBits)
+  // console.log("SHARED KEY: ",sharedBits)
 
   // now sha 256 it
 
