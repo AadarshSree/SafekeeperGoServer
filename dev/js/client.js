@@ -30,15 +30,79 @@ function str2ab(str) {
   return buf;
 }
 
-async function dhkeKeyGen(){
+// fn to verify the signature received in the response
+async function verifyKeySignature(dhkeKey, dhkeSignature) {
+
+  try {
+
+    // Convert the Public Key text to Object
+
+    var pubKeyStr = "-----BEGIN PUBLIC KEY-----\n" +
+      "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEbB6DTE8c36n4kugRSl7t9fkwmHZv" +
+      "al42WatGQpCW3DL75oRjMsRX48x03WrduU1XYWcRmjAY5RePhquNkI4gRw==" +
+      "\n-----END PUBLIC KEY-----"
+
+    // fetch the part of the PEM string between header and footer
+    const pemHeader = "-----BEGIN PUBLIC KEY-----";
+    const pemFooter = "-----END PUBLIC KEY-----";
+    const pemContents = pubKeyStr.substring(
+      pemHeader.length,
+      pubKeyStr.length - pemFooter.length - 1,
+    ).trim();
+
+    // base64 decode the string to get the binary data
+    const binaryDerString = atob(pemContents);
+    // convert from a binary string to an ArrayBuffer
+    const binaryDer = str2ab(binaryDerString);
+
+    const publicKey_server = await crypto.subtle.importKey(
+      "spki",
+      binaryDer,
+      {
+        name: "ECDSA",
+        namedCurve: "P-256",
+      },
+      true,
+      ['verify']
+    );
+
+    console.log("Server Public Key: " + publicKey_server)
+
+    // R|S Signature
+    // Verify the signature
+    const valid = await crypto.subtle.verify(
+      {
+        name: 'ECDSA',
+
+        hash: { name: 'SHA-256' },
+      },
+      publicKey_server,
+      str2ab(atob(dhkeSignature)),
+      str2ab(dhkeKey)
+    );
+
+    console.log('Signature valid:', valid);
+
+    return valid
+
+  }
+  catch (errr) {
+    console.error(errr)
+    return false
+  }
+
+
+}
+
+async function dhkeKeyGen() {
 
 
   var clientKeyGen = await crypto.subtle.generateKey({
     "name": "ECDH",
     "namedCurve": "P-256"
-  }, true, ['deriveBits',"deriveKey"]);
-  
-  
+  }, true, ['deriveBits', "deriveKey"]);
+
+
   // console.log("Clients Public Key: ",clientKeyGen.publicKey)
   console.log("------------------------------------------")
   const exported = await crypto.subtle.exportKey("spki", clientKeyGen.publicKey);
@@ -47,23 +111,23 @@ async function dhkeKeyGen(){
   const exportedAsBase64 = btoa(exportedAsString);
   const pemExported = `-----BEGIN PUBLIC KEY-----\n${exportedAsBase64}\n-----END PUBLIC KEY-----`;
 
-  console.log("SPKI PEM Public Key : ", pemExported )
+  console.log("SPKI PEM Public Key : ", pemExported)
 
   // now let's send the generated key to the server
 
-  const clientPubKey = { publicKey: pemExported}; 
-  var responseFromServer = "";
+  const clientPubKey = { publicKey: pemExported };
+  var responseFromServer = {};
 
   await fetch("http://localhost:9021/dhke", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(clientPubKey)
   })
-  .then(response => response.json()) // Parse the JSON response
-  .then(data => responseFromServer=data) // Handle the response data
-  .catch(error => console.error(error)); 
+    .then(response => response.json()) // Parse the JSON response
+    .then(data => responseFromServer = data) // Handle the response data
+    .catch(error => console.error(error));
 
-  console.log("Response:",responseFromServer)
+  console.log("Response:", responseFromServer)
 
   // NOW Handle the response from server
 
@@ -92,7 +156,7 @@ async function dhkeKeyGen(){
     []
   );
 
-  console.log("Server Public Key: "+publicKey_server)
+  console.log("Server Public Key: " + publicKey_server)
 
   var sharedBits = await crypto.subtle.deriveBits({
     "name": "ECDH",
@@ -110,7 +174,21 @@ async function dhkeKeyGen(){
   const hashArray = Array.from(new Uint8Array(hashBuffer));
   const hashHex = hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
 
-  console.log("Shared Key SHA256: ",hashHex)
+  console.log("Shared Key SHA256: ", hashHex)
+
+  // Ok now let's verify the signature recieved in the response
+
+  signValid = await verifyKeySignature(responseFromServer.publicKey, responseFromServer.signatureB64)
+
+  if (signValid == true)
+    console.log("\n[*] Signature Valid, Server Authenticated Key Exchange!")
+  else{
+
+    console.log("\n[!] KEY SIGNATURE NOT VALID! Cannot authenticate the server!")
+    return
+  }
+
+  //AES?
 
 
 
@@ -118,64 +196,64 @@ async function dhkeKeyGen(){
 
 //try to create key from server response key and use it for dhke
 // delete this function latetr
-async function responseToKey(){
+// async function responseToKey(){
 
 
-  var clientKeyGen = await crypto.subtle.generateKey({
-    "name": "ECDH",
-    "namedCurve": "P-256"
-  }, true, ['deriveBits',"deriveKey"]);
+//   var clientKeyGen = await crypto.subtle.generateKey({
+//     "name": "ECDH",
+//     "namedCurve": "P-256"
+//   }, true, ['deriveBits',"deriveKey"]);
 
-  var responseKeyPem = '-----BEGIN PUBLIC KEY-----\n' +
-  'MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE+02xyXF9l1W9lOv5JSaOev3/NtLV\n' +
-  't3KaeZ7874h25Dk8BtkcpvBg2btj1vhT7SEMoOpQeTSaWeLfTtVKl76hXg==\n' +
-  '-----END PUBLIC KEY-----\n' // hardcoding it rn
+//   var responseKeyPem = '-----BEGIN PUBLIC KEY-----\n' +
+//   'MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE+02xyXF9l1W9lOv5JSaOev3/NtLV\n' +
+//   't3KaeZ7874h25Dk8BtkcpvBg2btj1vhT7SEMoOpQeTSaWeLfTtVKl76hXg==\n' +
+//   '-----END PUBLIC KEY-----\n' // hardcoding it rn
 
-  // fetch the part of the PEM string between header and footer
-  const pemHeader = "-----BEGIN PUBLIC KEY-----";
-  const pemFooter = "-----END PUBLIC KEY-----";
-  const pemContents = responseKeyPem.substring(
-    pemHeader.length,
-    responseKeyPem.length - pemFooter.length - 1,
-  );
-  // base64 decode the string to get the binary data
-  const binaryDerString = atob(pemContents);
-  // convert from a binary string to an ArrayBuffer
-  const binaryDer = str2ab(binaryDerString);
+//   // fetch the part of the PEM string between header and footer
+//   const pemHeader = "-----BEGIN PUBLIC KEY-----";
+//   const pemFooter = "-----END PUBLIC KEY-----";
+//   const pemContents = responseKeyPem.substring(
+//     pemHeader.length,
+//     responseKeyPem.length - pemFooter.length - 1,
+//   );
+//   // base64 decode the string to get the binary data
+//   const binaryDerString = atob(pemContents);
+//   // convert from a binary string to an ArrayBuffer
+//   const binaryDer = str2ab(binaryDerString);
 
-  const publicKey_server = await crypto.subtle.importKey(
-    "spki",
-    binaryDer,
-    {
-      name: "ECDH",
-      namedCurve: "P-256",
-    },
-    true,
-    []
-  );
+//   const publicKey_server = await crypto.subtle.importKey(
+//     "spki",
+//     binaryDer,
+//     {
+//       name: "ECDH",
+//       namedCurve: "P-256",
+//     },
+//     true,
+//     []
+//   );
 
-  console.log("Server Public Key: "+publicKey_server)
+//   console.log("Server Public Key: "+publicKey_server)
 
-  var sharedBits = await crypto.subtle.deriveBits({
-    "name": "ECDH",
-    "public": publicKey_server
-  }, clientKeyGen.privateKey, 256);
+//   var sharedBits = await crypto.subtle.deriveBits({
+//     "name": "ECDH",
+//     "public": publicKey_server
+//   }, clientKeyGen.privateKey, 256);
 
-  console.log("SHARED KEY: ",sharedBits)
+//   console.log("SHARED KEY: ",sharedBits)
 
-  // now sha 256 it
+//   // now sha 256 it
 
-  // Use crypto.subtle.digest to calculate the SHA-256 hash
-  const hashBuffer = await crypto.subtle.digest("SHA-256", sharedBits);
+//   // Use crypto.subtle.digest to calculate the SHA-256 hash
+//   const hashBuffer = await crypto.subtle.digest("SHA-256", sharedBits);
 
-  // Convert the ArrayBuffer to a hex string
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  const hashHex = hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
+//   // Convert the ArrayBuffer to a hex string
+//   const hashArray = Array.from(new Uint8Array(hashBuffer));
+//   const hashHex = hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
 
-  console.log("Shared Key SHA256: ",hashHex)
+//   console.log("Shared Key SHA256: ",hashHex)
 
 
-}
+// }
 
 dhkeKeyGen();
 

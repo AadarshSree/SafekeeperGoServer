@@ -8,6 +8,7 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
+    "encoding/base64"
 	"errors"
 	"fmt"
 	"net/http"
@@ -32,6 +33,7 @@ type ClientPublicKey struct {
 type ServerPublicKey struct {
 
 	Ks string `json:"publicKey"`
+    Signature string `json:"signatureB64"`
     Desc string `json:"description"`
 }
 
@@ -122,12 +124,75 @@ func dhke(w http.ResponseWriter, r *http.Request){
     }
     pemBytes := pem.EncodeToMemory(pemBlock)
 
-    resp := ServerPublicKey{Ks: string(pemBytes), Desc: "Servers' Public Key for DHKE"}
+    resp := ServerPublicKey{Ks: string(pemBytes), Signature: signPublicKey(string(pemBytes))  ,Desc: "Servers' Public Key for DHKE"}
 
 	w.Header().Set("Content-Type", "application/json")
     json.NewEncoder(w).Encode(resp)
 
 
+}
+
+//Function to sign the DHKE PublicKey Kb for authenticated dhke
+
+func signPublicKey(publicKeyStr string) (pubSignB64 string){
+
+    // LET US NOW DEFINE THE PRIVATE KEY WE USE FOR SIGNING
+
+    var strprivkey = "-----BEGIN EC PRIVATE KEY-----\n"+
+    "MHcCAQEEIOiFY1s/QDHKuLEW4vP/nP/G2c3ycmUa5nvU0+lrIZswoAoGCCqGSM49"+
+    "AwEHoUQDQgAEbB6DTE8c36n4kugRSl7t9fkwmHZval42WatGQpCW3DL75oRjMsRX"+
+    "48x03WrduU1XYWcRmjAY5RePhquNkI4gRw==\n"+
+    "-----END EC PRIVATE KEY-----"
+
+    //END OF PRIVATE KEY
+
+    private_key,err := DecodePrivateStr(strprivkey)
+    if err != nil {
+        fmt.Printf("Failed Decoding ECPRV %v", err)
+    }
+
+    // sha256 the key string 
+    hash := sha256.New()
+    hash.Write([]byte(publicKeyStr))
+    hashBytes := hash.Sum(nil)
+
+    r,s, err := ecdsa.Sign(rand.Reader, private_key, hashBytes) // sign 
+    if err != nil {
+        fmt.Printf("Failed to sign hash: %v", err)
+    }
+
+    // Concatenate r and s to get R|S cuz webcrypto doesnt support asn1 :(
+    signature := append(r.Bytes(), s.Bytes()...)
+    return base64.StdEncoding.EncodeToString(signature) // base 64 cuz it works over hexstr for some reason
+
+}
+
+// Helper functions to convert STR PEM format key to ecdsa.PrivateKey
+func DecodePrivateStr(pemEncodedPriv string) (privateKey *ecdsa.PrivateKey, err error) {
+	blockPriv, _ := pem.Decode([]byte(pemEncodedPriv))
+    
+    if blockPriv == nil {
+        fmt.Println("Failed to decode PEM block containing private key")
+    }
+	x509EncodedPriv := blockPriv.Bytes
+
+	privateKey, err = x509.ParseECPrivateKey(x509EncodedPriv)
+
+	return
+}
+
+// DecodePublic public key
+func DecodePublicStr(pemEncodedPub string) (publicKey *ecdsa.PublicKey, err error) {
+	blockPub, _ := pem.Decode([]byte(pemEncodedPub))
+    if blockPub == nil {
+        fmt.Println("Failed to decode PEM block containing private key")
+    }
+	x509EncodedPub := blockPub.Bytes
+
+	genericPublicKey, err := x509.ParsePKIXPublicKey(x509EncodedPub)
+	publicKey = genericPublicKey.(*ecdsa.PublicKey)
+
+	return
 }
 
 //helper function to convert PEM request (txt) to ECDH Public Key

@@ -11,7 +11,7 @@ function str2ab(str) {
     return buf;
 }
 
-async function signing(){
+async function verifyKeySignature(dhkeKey, dhkeSignature){
 
     // Convert the Public Key text to Object
 
@@ -27,6 +27,7 @@ async function signing(){
         pemHeader.length,
         pubKeyStr.length - pemFooter.length - 1,
     ).trim();
+
     // base64 decode the string to get the binary data
     const binaryDerString = atob(pemContents);
     // convert from a binary string to an ArrayBuffer
@@ -46,8 +47,8 @@ async function signing(){
     console.log("Server Public Key: "+publicKey_server)
 
     // R|S Signature
-    var serverSignatureHex = "2342bc7b3f22c116c834dc54be970e673d75d3d51ce8f45a6a05d97bc907ec2bdc28c1a7af77decdd40e7cd2f60efbde4a1ef5164dfcf4c5e107e9af397c50d7"
-    var serverSignB64 = "TXj2pVCfhnbh42CyFXvviHYJ5TGTasas+1hki2xKn37DZf/fzdQj4eYUH6wZe/x+RBrsJ/jybswePudO6kOPHA=="
+    // var serverSignatureHex = "2342bc7b3f22c116c834dc54be970e673d75d3d51ce8f45a6a05d97bc907ec2bdc28c1a7af77decdd40e7cd2f60efbde4a1ef5164dfcf4c5e107e9af397c50d7"
+    // var serverSignB64 = "TXj2pVCfhnbh42CyFXvviHYJ5TGTasas+1hki2xKn37DZf/fzdQj4eYUH6wZe/x+RBrsJ/jybswePudO6kOPHA=="
     // var serverSignB64 = "pU2zOBJ3XrPASTyUhm6QQ50WXRgh2ECOZ90V3tw4aIqYT4fZby/4LTz9WpXE9lhPHK8E6akqWSuA+2M7Eto3cA=="
 
     // Verify the signature
@@ -58,14 +59,16 @@ async function signing(){
             hash: { name: 'SHA-256' },
         },
         publicKey_server,
-        str2ab(atob(serverSignB64)),
-        str2ab("FEINFEINFEIN")
+        str2ab(atob(dhkeSignature)),
+        str2ab(dhkeKey)
     );
 
     console.log('Signature valid:', valid);
 
+    return valid
 
 }
 
+verifyKeySignature("FEINFEINFEIN","TXj2pVCfhnbh42CyFXvviHYJ5TGTasas+1hki2xKn37DZf/fzdQj4eYUH6wZe/x+RBrsJ/jybswePudO6kOPHA==")
 
-signing();
+console.log("sdfsdf")
