@@ -8,6 +8,7 @@ import (
 	"crypto/sha256"
 	"crypto/x509"
 	"log"
+    b64 "encoding/base64"
 
 	// "encoding/json"
 	"encoding/hex"
@@ -91,13 +92,17 @@ func main() {
     ////////////////////////////////////////////
 
     r,s, err := ecdsa.Sign(rand.Reader, private_key, hashBytes)
-    signature := append(r.Bytes(), s.Bytes()...)
     if err != nil {
         log.Fatalf("Failed to sign hash: %v", err)
     }
 
+    // signature := append(r.Bytes(), s.Bytes()...)
+    // Concatenate r and s
+    signature := append(r.Bytes(), s.Bytes()...)
+
     // Print the ASN.1 encoded signature
-    fmt.Printf("R|S Signature: %s\n", hex.EncodeToString(signature))
+    fmt.Printf("R|S Signature base64: %v\n", b64.StdEncoding.EncodeToString(signature))
+    fmt.Printf("R|S Signature hex: %v\n", hex.EncodeToString(signature))
 
     // Verify the signature with the public key using VerifyASN1
     valid := ecdsa.Verify(public_key, hashBytes[:], r,s)
