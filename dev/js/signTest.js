@@ -69,6 +69,58 @@ async function verifyKeySignature(dhkeKey, dhkeSignature){
 
 }
 
-verifyKeySignature("FEINFEINFEIN","TXj2pVCfhnbh42CyFXvviHYJ5TGTasas+1hki2xKn37DZf/fzdQj4eYUH6wZe/x+RBrsJ/jybswePudO6kOPHA==")
+//-----
+//-----
+
+function ab2b64(buffer) {
+    const bytes = new Uint8Array(buffer);
+    let binary = '';
+    for (let i = 0; i < bytes.byteLength; i++) {
+        binary += String.fromCharCode(bytes[i]);
+    }
+    return btoa(binary);
+}
+
+async function testingAesEncryption(){
+
+    console.log("[+] AES-256 GCM")
+    let key_buffer = new Uint8Array("140afd3f882a98173fcd2b212c87b801e8d750a81badf0924a631790debdcdff".match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
+    // console.log(key_buffer.length)
+
+    const key_object = await crypto.subtle.importKey(
+        "raw",
+        key_buffer,
+        {
+            name: "AES-GCM",
+        },
+        true,
+        ["encrypt", "decrypt"]
+    );
+
+    let iv = crypto.getRandomValues(new Uint8Array(12));
+
+    const encoder = new TextEncoder();
+    const encodedData = encoder.encode("diorSauvage");
+
+    const encryptedData = await crypto.subtle.encrypt(
+        {
+            name: "AES-GCM",
+            iv: iv,
+        },
+        key_object,
+        encodedData
+    );
+
+    const encrypted_json = {"encrypted":ab2b64(encryptedData), "iv": ab2b64(iv)};
+
+    console.log(encrypted_json)
+
+
+}
+
+// verifyKeySignature("FEINFEINFEIN","TXj2pVCfhnbh42CyFXvviHYJ5TGTasas+1hki2xKn37DZf/fzdQj4eYUH6wZe/x+RBrsJ/jybswePudO6kOPHA==")
+
+testingAesEncryption()
+
 
 console.log("sdfsdf")

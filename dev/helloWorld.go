@@ -6,9 +6,11 @@ import (
 	// "crypto/elliptic"
 	"crypto/rand"
 	"crypto/sha256"
+	"crypto/aes"
+	"crypto/cipher"
 	"crypto/x509"
 	"log"
-    b64 "encoding/base64"
+    "encoding/base64"
 
 	// "encoding/json"
 	"encoding/hex"
@@ -22,7 +24,52 @@ func main() {
     // dhke()
     // pemToPubkey()
 
-    ecsign()
+    // ecsign()//
+
+    aesGcmDecrypt("CatBHfQOmZ23TEmbuZ08uqJA/XTMkm99gAP9", "lcJNWJ7kBpFjzmUX", "140afd3f882a98173fcd2b212c87b801e8d750a81badf0924a631790debdcdff")
+}
+
+
+// AES Decryption
+
+
+func aesGcmDecrypt(ciphertextBase64, ivBase64, keyHex string) (string, error) {
+	// Decode the base64 strings
+	ciphertext, err := base64.StdEncoding.DecodeString(ciphertextBase64)
+	if err != nil {
+		return "", fmt.Errorf("failed to decode ciphertext: %v", err)
+	}
+	nonce, err := base64.StdEncoding.DecodeString(ivBase64)
+	if err != nil {
+		return "", fmt.Errorf("failed to decode nonce: %v", err)
+	}
+
+	// Decode the hex string
+	key, err := hex.DecodeString(keyHex)
+	if err != nil {
+		return "", fmt.Errorf("failed to decode key: %v", err)
+	}
+
+	// Create AES cipher block
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return "", fmt.Errorf("failed to create cipher block: %v", err)
+	}
+
+	// Create GCM mode of operation
+	aesgcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return "", fmt.Errorf("failed to create GCM mode: %v", err)
+	}
+
+	// Decrypt the ciphertext
+	plaintext, err := aesgcm.Open(nil, nonce, ciphertext, nil)
+	if err != nil {
+		return "", fmt.Errorf("failed to decrypt: %v", err)
+	}
+
+	fmt.Printf("[+] Plaintext: %v\n",string(plaintext))
+    return string(plaintext), nil
 }
 
  // ECDSA signing for auth dhke ?
@@ -101,7 +148,7 @@ func main() {
     signature := append(r.Bytes(), s.Bytes()...)
 
     // Print the ASN.1 encoded signature
-    fmt.Printf("R|S Signature base64: %v\n", b64.StdEncoding.EncodeToString(signature))
+    fmt.Printf("R|S Signature base64: %v\n", base64.StdEncoding.EncodeToString(signature))
     fmt.Printf("R|S Signature hex: %v\n", hex.EncodeToString(signature))
 
     // Verify the signature with the public key using VerifyASN1

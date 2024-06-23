@@ -68,6 +68,12 @@ func routeKey(w http.ResponseWriter, r *http.Request){
 
 }
 
+func storeSecret(w http.ResponseWriter, r *http.Request){
+
+    
+
+}
+
 
 func dhke(w http.ResponseWriter, r *http.Request){
 
@@ -247,6 +253,12 @@ func main() {
 
 	//Route to diffie hellman key establishment
     http.HandleFunc("/dhke", dhke)
+    
+    //Route for password store
+    //need to add checks later on forif key gen or not
+    
+    http.HandleFunc("/storeSecret", storeSecret)
+
 
 
 
