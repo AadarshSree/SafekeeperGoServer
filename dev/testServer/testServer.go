@@ -114,9 +114,7 @@ func storeSecret(w http.ResponseWriter, r *http.Request){
 
     fmt.Println(plaintextSecret,"\n")
 
-    
 
-    
     w.Write([]byte("OK"))
 
 }
