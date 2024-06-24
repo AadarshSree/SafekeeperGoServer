@@ -1,14 +1,17 @@
 package main
 
 import (
+	"crypto/aes"
+	"crypto/cipher"
 	"crypto/ecdh"
 	"crypto/ecdsa"
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/x509"
+	"encoding/base64"
+	// "encoding/hex"
 	"encoding/json"
 	"encoding/pem"
-    "encoding/base64"
 	"errors"
 	"fmt"
 	"net/http"
@@ -36,6 +39,17 @@ type ServerPublicKey struct {
     Signature string `json:"signatureB64"`
     Desc string `json:"description"`
 }
+
+type ClientSecret struct {
+
+    Ciphertext string `json:"ciphertext"`
+    Iv string `json:"iv"`
+}
+
+// Global Var to Store Key
+
+var DHKE_SHARED_KEY []byte
+
 
 func routeSafe(w http.ResponseWriter, r *http.Request) {
     // Create a new response object
@@ -70,7 +84,40 @@ func routeKey(w http.ResponseWriter, r *http.Request){
 
 func storeSecret(w http.ResponseWriter, r *http.Request){
 
+    //Only post request
+    if r.Method != http.MethodPost {
+        http.Error(w, "BAD REQUEST 400", http.StatusMethodNotAllowed)
+        return
+    }
+    // fmt.Printf("[+] keyyy = %x",DHKE_SHARED_KEY)
+    // if(DHKE_SHARED_KEY)
+
+
+    if (len(DHKE_SHARED_KEY) == 0) {
+        http.Error(w, "INVALID REQUEST 400 - KEY AGREEMENT FAILED", http.StatusInternalServerError)
+        return
+    }
+    var clientSecret ClientSecret
+    decoder := json.NewDecoder(r.Body)
+    err := decoder.Decode(&clientSecret)
+    if err != nil {
+        http.Error(w, "Invalid request body", http.StatusBadRequest)
+        return
+    }
+
+    fmt.Println("Ciphertext: ",clientSecret.Ciphertext)
+    plaintextSecret,err := aesGcmDecrypt(clientSecret.Ciphertext,clientSecret.Iv, DHKE_SHARED_KEY)
+    if err != nil {
+        http.Error(w, "AES Error", http.StatusInternalServerError)
+        return
+    }
+
+    fmt.Println(plaintextSecret,"\n")
+
     
+
+    
+    w.Write([]byte("OK"))
 
 }
 
@@ -112,7 +159,8 @@ func dhke(w http.ResponseWriter, r *http.Request){
 
     sharedKey,_ := serverDhke.ECDH(clientsPublicKey)
     sharedKeySHA256 := sha256.Sum256(sharedKey)
-    fmt.Printf("[*] Shared Key (K_AB) = %x\n", sharedKeySHA256) // sha256 the key and use cuz?
+    DHKE_SHARED_KEY = sharedKeySHA256[:]
+    fmt.Printf("[*] Shared Key (K_AB) = %x\n", DHKE_SHARED_KEY) // sha256 the key and use cuz?
 
     
     // Now take servers public key convert to pem and send it in response
@@ -137,6 +185,8 @@ func dhke(w http.ResponseWriter, r *http.Request){
 
 
 }
+
+
 
 //Function to sign the DHKE PublicKey Kb for authenticated dhke
 
@@ -240,6 +290,45 @@ func pemToPubkey(pemStr string) (*ecdh.PublicKey , error) {
     
         return parsedPubKey,nil
     
+}
+
+
+// Function to decrypt AES-GCM using KAB
+
+func aesGcmDecrypt(ciphertextBase64 string, ivBase64 string, keyBA []byte) (string, error) {
+	// Decode the base64 strings
+	ciphertext, err := base64.StdEncoding.DecodeString(ciphertextBase64)
+	if err != nil {
+		return "", fmt.Errorf("failed to decode ciphertext: %v", err)
+	}
+	nonce, err := base64.StdEncoding.DecodeString(ivBase64)
+	if err != nil {
+		return "", fmt.Errorf("failed to decode nonce: %v", err)
+	}
+
+	// Decode the hex string
+	// key = keyBA
+
+	// Create AES cipher block
+	block, err := aes.NewCipher(keyBA)
+	if err != nil {
+		return "", fmt.Errorf("failed to create cipher block: %v", err)
+	}
+
+	// Create GCM mode of operation
+	aesgcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return "", fmt.Errorf("failed to create GCM mode: %v", err)
+	}
+
+	// Decrypt the ciphertext
+	plaintext, err := aesgcm.Open(nil, nonce, ciphertext, nil)
+	if err != nil {
+		return "", fmt.Errorf("failed to decrypt: %v", err)
+	}
+
+	// fmt.Printf("[+] Plaintext: %v\n",string(plaintext))
+    return string(plaintext), nil
 }
 
 func main() {

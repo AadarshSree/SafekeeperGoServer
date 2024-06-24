@@ -81,10 +81,10 @@ function ab2b64(buffer) {
     return btoa(binary);
 }
 
-async function testingAesEncryption(){
+async function testingAesEncryption(key_hex_str){
 
-    console.log("[+] AES-256 GCM")
-    let key_buffer = new Uint8Array("140afd3f882a98173fcd2b212c87b801e8d750a81badf0924a631790debdcdff".match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
+    console.log("[+] AES-256 GCM Encryption ")
+    let key_buffer = new Uint8Array(key_hex_str.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
     // console.log(key_buffer.length)
 
     const key_object = await crypto.subtle.importKey(
@@ -100,7 +100,7 @@ async function testingAesEncryption(){
     let iv = crypto.getRandomValues(new Uint8Array(12));
 
     const encoder = new TextEncoder();
-    const encodedData = encoder.encode("diorSauvage");
+    const encodedData = encoder.encode("safekeeper@123");
 
     const encryptedData = await crypto.subtle.encrypt(
         {
@@ -111,7 +111,7 @@ async function testingAesEncryption(){
         encodedData
     );
 
-    const encrypted_json = {"encrypted":ab2b64(encryptedData), "iv": ab2b64(iv)};
+    const encrypted_json = {"ciphertext":ab2b64(encryptedData), "iv": ab2b64(iv)};
 
     console.log(encrypted_json)
 
@@ -120,7 +120,10 @@ async function testingAesEncryption(){
 
 // verifyKeySignature("FEINFEINFEIN","TXj2pVCfhnbh42CyFXvviHYJ5TGTasas+1hki2xKn37DZf/fzdQj4eYUH6wZe/x+RBrsJ/jybswePudO6kOPHA==")
 
-testingAesEncryption()
+keyStr = "140afd3f882a98173fcd2b212c87b801e8d750a81badf0924a631790debdcdff"
+passwd = "safekeeper@123"
+
+testingAesEncryption(keyStr,passwd)
 
 
 console.log("sdfsdf")

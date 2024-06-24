@@ -22,3 +22,14 @@ content-type: application/json
 
 }
 
+
+### POST CHECK AES
+
+POST http://localhost:9021/storeSecret HTTP/1.1
+content-type: application/json
+
+{
+  "ciphertext": "JyQYNnCOTpc4azlebPNnRHOOrwF05L32ZAq2lm4G",
+  "iv": "z3HJC5+vpsrq24kI"
+}
+
