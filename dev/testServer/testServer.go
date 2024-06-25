@@ -5,10 +5,13 @@ import (
 	"crypto/cipher"
 	"crypto/ecdh"
 	"crypto/ecdsa"
+	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/x509"
 	"encoding/base64"
+	"encoding/hex"
+
 	// "encoding/hex"
 	"encoding/json"
 	"encoding/pem"
@@ -114,6 +117,17 @@ func storeSecret(w http.ResponseWriter, r *http.Request){
 
     fmt.Println(plaintextSecret,"\n")
 
+    //now hmac
+
+    sgx_hmac,err := SGX_HMAC(plaintextSecret)
+
+    if err != nil {
+        http.Error(w, "Hashing Error!", http.StatusInternalServerError)
+
+    }
+
+    fmt.Println("[*] HMAC: ",sgx_hmac)
+
 
     w.Write([]byte("OK"))
 
@@ -137,7 +151,6 @@ func dhke(w http.ResponseWriter, r *http.Request){
     }
 
     
-
     // Now let's convert PEM to *ecdh.PublicKey
 
     clientsPublicKey, err := pemToPubkey(clientPubKey.Ka)
@@ -327,6 +340,25 @@ func aesGcmDecrypt(ciphertextBase64 string, ivBase64 string, keyBA []byte) (stri
 
 	// fmt.Printf("[+] Plaintext: %v\n",string(plaintext))
     return string(plaintext), nil
+}
+
+// func to do hmac
+
+func SGX_HMAC(secret string) (string, error) {
+	//hardcoded the SGX key for now
+	key, err := hex.DecodeString("8e415c7b5f8fd2432f17e1c5c17453519d9984042ba32ba9ae5c41f3b6db7404")
+	if err != nil {
+		return "", fmt.Errorf("failed to decode key: %v", err)
+	}
+
+	h := hmac.New(sha256.New, key)
+
+	h.Write([]byte(secret))
+
+	hmacValue := h.Sum(nil)
+
+	// return hex string
+	return hex.EncodeToString(hmacValue), nil
 }
 
 func main() {

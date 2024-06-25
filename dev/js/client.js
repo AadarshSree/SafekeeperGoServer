@@ -256,9 +256,9 @@ async function mainFunction() {
 
   // after DHKE GEN
 
-  await snooze(2000)
+  // await snooze(2000)
 
-  let userPassword = "rolexSubmariner10000$";
+  let userPassword = "rolexSubmariner20000$";
 
   console.log(DHKE_SHARED_KEY)
   if (DHKE_SHARED_KEY != "") {
