@@ -258,7 +258,7 @@ async function mainFunction() {
 
   // await snooze(2000)
 
-  let userPassword = "rolexSubmariner20000$";
+  let userPassword = "hahaha123456789$";
 
   console.log(DHKE_SHARED_KEY)
   if (DHKE_SHARED_KEY != "") {

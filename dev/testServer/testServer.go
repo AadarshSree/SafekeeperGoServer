@@ -129,13 +129,35 @@ func storeSecret(w http.ResponseWriter, r *http.Request){
     fmt.Println("[*] HMAC: ",sgx_hmac)
 
 
-    w.Write([]byte("OK"))
+    // w.Write([]byte("OK"))
+    // response sgx_hmac
+
+	response := map[string]string{
+		"sgx_hmac": sgx_hmac,
+	}
+
+	// Set the response header to indicate JSON content
+	w.Header().Set("Content-Type", "application/json")
+
+	// Write the response
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		return
+	}
 
 }
 
+// func enableCors(w *http.ResponseWriter) {
+//     // (*w).Header().Set("Access-Control-Allow-Origin", "http://127.0.0.1:8080")
+//     (*w).Header().Set("Access-Control-Allow-Origin", "*")
+//     (*w).Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+//     (*w).Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+//     }
 
 func dhke(w http.ResponseWriter, r *http.Request){
 
+    // Enable CORS
+    // enableCors(&w)
 
 	if r.Method != http.MethodPost {
         http.Error(w, "BAD REQUEST 400", http.StatusMethodNotAllowed)
@@ -361,27 +383,60 @@ func SGX_HMAC(secret string) (string, error) {
 	return hex.EncodeToString(hmacValue), nil
 }
 
+// Middleware function to handle CORS
+func corsMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Set CORS headers
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+
+		// Handle preflight requests
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		// Pass the request to the next handler
+		next.ServeHTTP(w, r)
+	})
+}
+
 func main() {
 
 	fmt.Println("Safekeeper Server Runing on Port 9021")
 
 
+    mux := http.NewServeMux()
+
+    mux.Handle("/dhke", http.HandlerFunc(dhke))
+    mux.Handle("/storeSecret", http.HandlerFunc(storeSecret))
+    
+    mux.Handle("/safe", http.HandlerFunc(routeSafe))
+    mux.Handle("/key", http.HandlerFunc(routeKey))
+
+    handler := corsMiddleware(mux)
+
+	// Start the HTTP server
+
+	http.ListenAndServe(":9021", handler)
+
+
+
     // route handler
-    http.HandleFunc("/safe", routeSafe)
-    http.HandleFunc("/key", routeKey) // testing only key?kv=123
 
-	//Route to diffie hellman key establishment
-    http.HandleFunc("/dhke", dhke)
+    // http.HandleFunc("/safe", routeSafe)
+    // http.HandleFunc("/key", routeKey) // testing only key?kv=123
+
+	// //Route to diffie hellman key establishment
+    // http.HandleFunc("/dhke", dhke)
     
-    //Route for password store
-    //need to add checks later on forif key gen or not
+    // //Route for password store
+    // //need to add checks later on forif key gen or not
     
-    http.HandleFunc("/storeSecret", storeSecret)
+    // http.HandleFunc("/storeSecret", storeSecret)
 
 
-
-
-
-    // Start the server on port
-    http.ListenAndServe(":9021", nil)
+    // // Start the server on port
+    // http.ListenAndServe(":9021", nil)
 }
