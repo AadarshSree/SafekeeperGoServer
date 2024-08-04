@@ -420,7 +420,8 @@ func main() {
 
 	// Start the HTTP server
 
-	http.ListenAndServe(":9021", handler)
+	// http.ListenAndServe(":9021", handler)
+    http.ListenAndServeTLS(":9021", "./.SSL_KEYS/cert.pem", "./.SSL_KEYS/key.pem", handler)
 
 
 
