@@ -19,7 +19,13 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+
+    "github.com/gorilla/sessions"
 )
+
+
+//Sessions
+var sessionStore = sessions.NewCookieStore( []byte( "4d0a2ac8eba35caae67a591bd43ae06e6fe4744a1289ec6cbaa73ce7ea7cfb29" ) ) // testing key 
 
 // struct for json
 type Response struct {
@@ -94,6 +100,15 @@ func storeSecret(w http.ResponseWriter, r *http.Request){
     }
     // fmt.Printf("[+] keyyy = %x",DHKE_SHARED_KEY)
     // if(DHKE_SHARED_KEY)
+
+    //session handle
+    session, _ := sessionStore.Get(r, "clientSessionID")
+    if dhkeKeyFromSession, ok := session.Values["dhke-key"]; ok {
+        fmt.Printf("[$$] DHKE KEY from SESSION -- %v \n",dhkeKeyFromSession)
+    }else{
+        fmt.Printf("[$] Session not set properly\n")
+    }
+    
 
 
     if (len(DHKE_SHARED_KEY) == 0) {
@@ -195,6 +210,30 @@ func dhke(w http.ResponseWriter, r *http.Request){
     DHKE_SHARED_KEY = sharedKeySHA256[:]
     fmt.Printf("[*] Shared Key (K_AB) = %x\n", DHKE_SHARED_KEY) // sha256 the key and use cuz?
 
+    //SESSIONS 
+
+    session, _ := sessionStore.Get(r, "clientSessionID")
+    session.Values["dhke-key"] =  hex.EncodeToString(sharedKeySHA256[:])
+
+    // Unset the Expires property to make it a session cookie
+    session.Options = &sessions.Options{
+        Path:   "*/*",
+        // MaxAge: 0, // MaxAge 0 means no 'Expires' attribute and the cookie is a session cookie
+        Secure:   true, // Ensure the cookie is only sent over HTTPS
+        HttpOnly: true, // no js access
+    }
+
+    // session.Save(r, w)
+
+    if session.Save(r, w) != nil {
+        fmt.Println("{error} ERROR SAVING SESSION!!!")
+        return
+    }
+
+    session, _ = sessionStore.Get(r, "clientSessionID")
+
+    fmt.Println("[!] SESSSION clientSessionID.dhke-key = ",session.Values["dhke-key"])
+
     
     // Now take servers public key convert to pem and send it in response
 
@@ -215,6 +254,29 @@ func dhke(w http.ResponseWriter, r *http.Request){
 
 	w.Header().Set("Content-Type", "application/json")
     json.NewEncoder(w).Encode(resp)
+
+
+}
+
+
+func testSessions(w http.ResponseWriter, r *http.Request){
+
+
+    session, _ := sessionStore.Get(r, "clientSessionID")
+
+    // fmt.Println("[!] SESSSION clientSessionID.dhke-key = ",session.Values["dhke-key"])
+
+    var responseMessage string
+
+    if dhkeKey, ok := session.Values["dhke-key"]; ok {
+        responseMessage = fmt.Sprintf("[!] SESSION clientSessionID.dhke-key = %v", dhkeKey)
+    } else {
+        responseMessage = "[!!] SESSION clientSessionID.dhke-key is not present"
+    }
+
+    w.Header().Set("Content-Type", "text/plain")
+    w.Write([]byte(responseMessage))
+   
 
 
 }
@@ -387,9 +449,10 @@ func SGX_HMAC(secret string) (string, error) {
 func corsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Set CORS headers
-		w.Header().Set("Access-Control-Allow-Origin", "*") // i should use localhost:8080 instead
+		w.Header().Set("Access-Control-Allow-Origin", "https://safekeeper.dev:8080") // i should use localhost:8080 instead
         //actually use domain name edit hosts file ipaddr domain map
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Credentials", "true")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 
 		// Handle preflight requests
@@ -413,6 +476,8 @@ func main() {
     mux.Handle("/dhke", http.HandlerFunc(dhke))
     mux.Handle("/storeSecret", http.HandlerFunc(storeSecret))
     
+    mux.Handle("/ts", http.HandlerFunc(testSessions))
+
     mux.Handle("/safe", http.HandlerFunc(routeSafe))
     mux.Handle("/key", http.HandlerFunc(routeKey))
 
