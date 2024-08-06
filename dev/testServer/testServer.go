@@ -55,9 +55,9 @@ type ClientSecret struct {
     Iv string `json:"iv"`
 }
 
-// Global Var to Store Key
+// Global Var to Store Key replaced by session variable
 
-var DHKE_SHARED_KEY []byte
+// var DHKE_SHARED_KEY []byte
 
 
 func routeSafe(w http.ResponseWriter, r *http.Request) {
@@ -103,28 +103,39 @@ func storeSecret(w http.ResponseWriter, r *http.Request){
 
     //session handle
     session, _ := sessionStore.Get(r, "clientSessionID")
+
+
     if dhkeKeyFromSession, ok := session.Values["dhke-key"]; ok {
-        fmt.Printf("[$$] DHKE KEY from SESSION -- %v \n",dhkeKeyFromSession)
+        fmt.Printf("[!] DHKE KEY from SESSION -- %v \n",dhkeKeyFromSession)
+
     }else{
-        fmt.Printf("[$] Session not set properly\n")
+        fmt.Printf("[!] Session not found -- key agreement not done \n")
+        http.Error(w, "INVALID REQUEST 400 - KEY AGREEMENT FAILED", http.StatusInternalServerError)
+        return
     }
+
+    dhkeKeyBytes, err := hex.DecodeString(session.Values["dhke-key"].(string))
+        if err != nil {
+            http.Error(w, "Failed to decode session key", http.StatusInternalServerError)
+            return
+        }
+    
     
 
 
-    if (len(DHKE_SHARED_KEY) == 0) {
+    if (len(dhkeKeyBytes) == 0) {
         http.Error(w, "INVALID REQUEST 400 - KEY AGREEMENT FAILED", http.StatusInternalServerError)
         return
     }
     var clientSecret ClientSecret
     decoder := json.NewDecoder(r.Body)
-    err := decoder.Decode(&clientSecret)
-    if err != nil {
+    if decoder.Decode(&clientSecret) != nil {
         http.Error(w, "Invalid request body", http.StatusBadRequest)
         return
     }
 
     fmt.Println("Ciphertext: ",clientSecret.Ciphertext)
-    plaintextSecret,err := aesGcmDecrypt(clientSecret.Ciphertext,clientSecret.Iv, DHKE_SHARED_KEY)
+    plaintextSecret,err := aesGcmDecrypt(clientSecret.Ciphertext,clientSecret.Iv, dhkeKeyBytes)
     if err != nil {
         http.Error(w, "AES Error", http.StatusInternalServerError)
         return
@@ -207,8 +218,8 @@ func dhke(w http.ResponseWriter, r *http.Request){
 
     sharedKey,_ := serverDhke.ECDH(clientsPublicKey)
     sharedKeySHA256 := sha256.Sum256(sharedKey)
-    DHKE_SHARED_KEY = sharedKeySHA256[:]
-    fmt.Printf("[*] Shared Key (K_AB) = %x\n", DHKE_SHARED_KEY) // sha256 the key and use cuz?
+    // DHKE_SHARED_KEY = sharedKeySHA256[:]
+    fmt.Printf("[*] Shared Key (K_AB) = %x\n", sharedKeySHA256[:]) // sha256 the key and use cuz?
 
     //SESSIONS 
 
@@ -230,9 +241,9 @@ func dhke(w http.ResponseWriter, r *http.Request){
         return
     }
 
-    session, _ = sessionStore.Get(r, "clientSessionID")
+    // session, _ = sessionStore.Get(r, "clientSessionID")
 
-    fmt.Println("[!] SESSSION clientSessionID.dhke-key = ",session.Values["dhke-key"])
+    // fmt.Println("[!] SESSSION clientSessionID.dhke-key = ",session.Values["dhke-key"])
 
     
     // Now take servers public key convert to pem and send it in response
