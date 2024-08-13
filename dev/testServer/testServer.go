@@ -91,7 +91,7 @@ func routeKey(w http.ResponseWriter, r *http.Request){
 
 }
 
-func storeSecret(w http.ResponseWriter, r *http.Request){
+func ComputeHmacAndRespond(w http.ResponseWriter, r *http.Request){
 
     //Only post request
     if r.Method != http.MethodPost {
@@ -485,7 +485,7 @@ func main() {
     mux := http.NewServeMux()
 
     mux.Handle("/dhke", http.HandlerFunc(dhke))
-    mux.Handle("/storeSecret", http.HandlerFunc(storeSecret))
+    mux.Handle("/hmacSGX", http.HandlerFunc(ComputeHmacAndRespond))
     
     mux.Handle("/ts", http.HandlerFunc(testSessions))
 
