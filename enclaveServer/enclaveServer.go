@@ -479,9 +479,7 @@ func corsMiddleware(next http.Handler) http.Handler {
 
 func main() {
 
-	fmt.Println("Safekeeper Server Runing on Port 9021")
-
-
+	
     mux := http.NewServeMux()
 
     mux.Handle("/dhke", http.HandlerFunc(dhke))
@@ -496,7 +494,12 @@ func main() {
 
 	// Start the HTTP server
 
-	http.ListenAndServe(":80", handler)
+	fmt.Println("[*] Safekeeper Server Running on Port 80 ...")
+	err := http.ListenAndServe(":80", handler)
+	if(err != nil){
+		fmt.Println(err)
+	}
+
     // http.ListenAndServeTLS(":9021", "./.SSL_KEYS/cert.pem", "./.SSL_KEYS/key.pem", handler)
 
 
