@@ -460,7 +460,7 @@ func SGX_HMAC(secret string) (string, error) {
 func corsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Set CORS headers
-		w.Header().Set("Access-Control-Allow-Origin", "https://safekeeper.dev:8080") // i should use localhost:8080 instead
+		w.Header().Set("Access-Control-Allow-Origin", "https://safekeeper.dev:8080") // geralt.csrl.info?
         //actually use domain name edit hosts file ipaddr domain map
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Credentials", "true")
@@ -496,8 +496,8 @@ func main() {
 
 	// Start the HTTP server
 
-	// http.ListenAndServe(":9021", handler)
-    http.ListenAndServeTLS(":9021", "./.SSL_KEYS/cert.pem", "./.SSL_KEYS/key.pem", handler)
+	http.ListenAndServe(":80", handler)
+    // http.ListenAndServeTLS(":9021", "./.SSL_KEYS/cert.pem", "./.SSL_KEYS/key.pem", handler)
 
 
 
