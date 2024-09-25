@@ -1,0 +1,2 @@
+
+docker run --rm -v$PWD:$PWD -w$PWD ghcr.io/edgelesssys/ego-dev go build tqv.go

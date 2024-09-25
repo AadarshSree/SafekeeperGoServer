@@ -21,6 +21,9 @@ import (
 	"strconv"
 
     "github.com/gorilla/sessions"
+
+	"github.com/edgelesssys/ego/enclave"
+
 )
 
 
@@ -46,6 +49,7 @@ type ServerPublicKey struct {
 
 	Ks string `json:"publicKey"`
     Signature string `json:"signatureB64"`
+    SGX_QUOTE string `json:"SGX_QUOTE"`
     Desc string `json:"description"`
 }
 
@@ -261,7 +265,23 @@ func dhke(w http.ResponseWriter, r *http.Request){
     }
     pemBytes := pem.EncodeToMemory(pemBlock)
 
-    resp := ServerPublicKey{Ks: string(pemBytes), Signature: signPublicKey(string(pemBytes))  ,Desc: "Servers' Public Key for DHKE"}
+
+    // GENERATE THE QUOTE HERE
+    // THE QUOTE CONTAINS SHA256(K-pub-server)
+
+    var hashOfKpubS = sha256.Sum256(pemBytes)
+
+    //ENCLAVE ENTRY QUOTE
+
+    sgx_report, err := enclave.GetRemoteReport(hashOfKpubS[:])
+	if err != nil {
+        
+		fmt.Println(err)
+        
+	}
+
+
+    resp := ServerPublicKey{Ks: string(pemBytes), Signature: signPublicKey(string(pemBytes))  , SGX_QUOTE: hex.EncodeToString(sgx_report)  ,Desc: "Servers' Public Key for DHKE"}
 
 	w.Header().Set("Content-Type", "application/json")
     json.NewEncoder(w).Encode(resp)
@@ -288,7 +308,6 @@ func testSessions(w http.ResponseWriter, r *http.Request){
     w.Header().Set("Content-Type", "text/plain")
     w.Write([]byte(responseMessage))
    
-
 
 }
 
@@ -460,7 +479,7 @@ func SGX_HMAC(secret string) (string, error) {
 func corsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Set CORS headers
-		w.Header().Set("Access-Control-Allow-Origin", "https://safekeeper.dev:8080") // geralt.csrl.info?
+		w.Header().Set("Access-Control-Allow-Origin", "https://keen.csrl.info") // geralt.csrl.info?
         //actually use domain name edit hosts file ipaddr domain map
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Credentials", "true")
@@ -479,7 +498,8 @@ func corsMiddleware(next http.Handler) http.Handler {
 
 func main() {
 
-	
+
+
     mux := http.NewServeMux()
 
     mux.Handle("/dhke", http.HandlerFunc(dhke))
@@ -493,13 +513,11 @@ func main() {
     handler := corsMiddleware(mux)
 
 	// Start the HTTP server
-
-	fmt.Println("[*] Safekeeper Server Running on Port 80 ...")
-	err := http.ListenAndServe(":80", handler)
+	fmt.Println("[*] Safekeeper Server Running on Port 8080 ...")
+	err := http.ListenAndServe(":8080", handler)
 	if(err != nil){
 		fmt.Println(err)
 	}
-
     // http.ListenAndServeTLS(":9021", "./.SSL_KEYS/cert.pem", "./.SSL_KEYS/key.pem", handler)
 
 
